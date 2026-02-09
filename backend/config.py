@@ -2,7 +2,7 @@
 Configuration module for Todo AI Chatbot application.
 """
 from typing import Optional
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 import os
 
 

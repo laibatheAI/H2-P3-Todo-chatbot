@@ -2,7 +2,7 @@
 MCP tools for task management in the Todo AI Chatbot application.
 """
 from mcp.server import Server
-from mcp.types import Tool, Parameter, ToolResult
+from mcp.types import Tool, Result
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -49,14 +49,14 @@ class UpdateTaskParams(BaseModel):
 
 
 # Define the tools
-def add_task_tool(params: AddTaskParams) -> ToolResult:
+def add_task_tool(params: AddTaskParams) -> Result:
     """
     Creates a new task in the user's task list with specified properties.
     """
     try:
         # Validate priority
         if params.priority and params.priority not in ["low", "medium", "high"]:
-            return ToolResult(error="Invalid priority value. Use 'low', 'medium', or 'high'.")
+            return Result(error="Invalid priority value. Use 'low', 'medium', or 'high'.")
 
         # Parse due date if provided
         due_date = None
@@ -64,7 +64,7 @@ def add_task_tool(params: AddTaskParams) -> ToolResult:
             try:
                 due_date = datetime.fromisoformat(params.due_date.replace('Z', '+00:00'))
             except ValueError:
-                return ToolResult(error="Invalid due_date format. Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ).")
+                return Result(error="Invalid due_date format. Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ).")
 
         # Create task data
         task_data = TaskCreate(
@@ -109,31 +109,31 @@ def add_task_tool(params: AddTaskParams) -> ToolResult:
             "task": task_dict
         }
 
-        return ToolResult(content=json.dumps(result))
+        return Result(content=json.dumps(result))
 
     except Exception as e:
-        return ToolResult(error=f"Failed to create task: {str(e)}")
+        return Result(error=f"Failed to create task: {str(e)}")
 
 
-def list_tasks_tool(params: ListTasksParams) -> ToolResult:
+def list_tasks_tool(params: ListTasksParams) -> Result:
     """
     Retrieves all tasks associated with the authenticated user, with optional filtering.
     """
     try:
         # Validate inputs
         if params.limit and (params.limit < 1 or params.limit > 100):
-            return ToolResult(error="Limit must be between 1 and 100")
+            return Result(error="Limit must be between 1 and 100")
 
         if params.offset and params.offset < 0:
-            return ToolResult(error="Offset must be greater than or equal to 0")
+            return Result(error="Offset must be greater than or equal to 0")
 
         # Validate status parameter
         if params.status and params.status not in ["all", "pending", "completed"]:
-            return ToolResult(error="Invalid status. Use 'all', 'pending', or 'completed'.")
+            return Result(error="Invalid status. Use 'all', 'pending', or 'completed'.")
 
         # Validate priority parameter
         if params.priority and params.priority not in ["low", "medium", "high"]:
-            return ToolResult(error="Invalid priority. Use 'low', 'medium', or 'high'.")
+            return Result(error="Invalid priority. Use 'low', 'medium', or 'high'.")
 
         # For demo purposes, we'll return mock data
         # In a real implementation, this would query the database with proper user filtering
@@ -172,13 +172,13 @@ def list_tasks_tool(params: ListTasksParams) -> ToolResult:
             "tasks": tasks
         }
 
-        return ToolResult(content=json.dumps(result))
+        return Result(content=json.dumps(result))
 
     except Exception as e:
-        return ToolResult(error=f"Failed to retrieve tasks: {str(e)}")
+        return Result(error=f"Failed to retrieve tasks: {str(e)}")
 
 
-def complete_task_tool(params: CompleteTaskParams) -> ToolResult:
+def complete_task_tool(params: CompleteTaskParams) -> Result:
     """
     Marks a specific task as completed.
     """
@@ -187,7 +187,7 @@ def complete_task_tool(params: CompleteTaskParams) -> ToolResult:
         try:
             task_id = UUID(params.task_id)
         except ValueError:
-            return ToolResult(error="Invalid task ID format")
+            return Result(error="Invalid task ID format")
 
         # For demo purposes, we'll simulate task completion
         # In a real implementation, this would query the database to find and update the task
@@ -209,13 +209,13 @@ def complete_task_tool(params: CompleteTaskParams) -> ToolResult:
             "task": task_dict
         }
 
-        return ToolResult(content=json.dumps(result))
+        return Result(content=json.dumps(result))
 
     except Exception as e:
-        return ToolResult(error=f"Failed to complete task: {str(e)}")
+        return Result(error=f"Failed to complete task: {str(e)}")
 
 
-def delete_task_tool(params: DeleteTaskParams) -> ToolResult:
+def delete_task_tool(params: DeleteTaskParams) -> Result:
     """
     Permanently removes a task from the user's task list.
     """
@@ -224,7 +224,7 @@ def delete_task_tool(params: DeleteTaskParams) -> ToolResult:
         try:
             task_id = UUID(params.task_id)
         except ValueError:
-            return ToolResult(error="Invalid task ID format")
+            return Result(error="Invalid task ID format")
 
         # For demo purposes, we'll simulate task deletion
         # In a real implementation, this would query the database to delete the task
@@ -234,13 +234,13 @@ def delete_task_tool(params: DeleteTaskParams) -> ToolResult:
             "message": f"Task {params.task_id} deleted successfully"
         }
 
-        return ToolResult(content=json.dumps(result))
+        return Result(content=json.dumps(result))
 
     except Exception as e:
-        return ToolResult(error=f"Failed to delete task: {str(e)}")
+        return Result(error=f"Failed to delete task: {str(e)}")
 
 
-def update_task_tool(params: UpdateTaskParams) -> ToolResult:
+def update_task_tool(params: UpdateTaskParams) -> Result:
     """
     Modifies properties of an existing task.
     """
@@ -249,11 +249,11 @@ def update_task_tool(params: UpdateTaskParams) -> ToolResult:
         try:
             task_id = UUID(params.task_id)
         except ValueError:
-            return ToolResult(error="Invalid task ID format")
+            return Result(error="Invalid task ID format")
 
         # Validate priority if provided
         if params.priority and params.priority not in ["low", "medium", "high"]:
-            return ToolResult(error="Invalid priority. Use 'low', 'medium', or 'high'.")
+            return Result(error="Invalid priority. Use 'low', 'medium', or 'high'.")
 
         # For demo purposes, we'll simulate task update
         # In a real implementation, this would query the database to find and update the task
@@ -279,10 +279,10 @@ def update_task_tool(params: UpdateTaskParams) -> ToolResult:
             "task": updated_task
         }
 
-        return ToolResult(content=json.dumps(result))
+        return Result(content=json.dumps(result))
 
     except Exception as e:
-        return ToolResult(error=f"Failed to update task: {str(e)}")
+        return Result(error=f"Failed to update task: {str(e)}")
 
 
 # Create Tool instances

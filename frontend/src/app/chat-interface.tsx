@@ -59,15 +59,15 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      // Get user ID from auth context
-      const token = localStorage.getItem('access_token');
+      // Get user ID from auth context using the correct token key
+      const token = localStorage.getItem('todo_app_token');
       if (!token) {
         throw new Error('User not authenticated');
       }
 
       // Decode the JWT token to get user info
       const payload = JSON.parse(atob(token.split('.')[1]));
-      const userId = payload.sub || payload.userId || 'unknown'; // Common JWT claim names
+      const userId = payload.sub || payload.userId || payload.user_id || 'unknown'; // Common JWT claim names
 
       // Make real HTTP request to backend API
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL;
@@ -107,11 +107,17 @@ const ChatInterface = () => {
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      const errorMessage: Message = {
+      const errorMessageText =
+        error instanceof Error
+          ? error.message
+          : 'Failed to process your request';
+
+      const errorMessage = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: `Error: ${error.message || 'Failed to process your request'}. Please try again.`
+        content: `Error: ${errorMessageText}. Please try again.`
       };
+
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);

@@ -256,111 +256,112 @@ class TodoAgent:
         Returns:
             Result of the tool execution
         """
-        # In a real implementation, this would make actual calls to the MCP tools
-        # For now, we'll simulate tool execution
-
         import json
         from uuid import uuid4
+        from datetime import datetime
 
         function_name = tool_call.function.name
         function_args = json.loads(tool_call.function.arguments)
 
-        # Add user context to function args
+        # Add user context to function args if needed
         function_args['user_id'] = user_id
 
         try:
-            # Simulate different tool responses based on the function called
+            # Since we're having issues with the MCP tool integration,
+            # we'll simulate the tool execution for now to ensure the chat works
             if function_name == "add_task":
-                return {
+                # Simulate adding a task
+                task_id = str(uuid4())
+                task_title = function_args.get('title', 'Untitled Task')
+                
+                result = {
                     "success": True,
-                    "task_id": str(uuid4()),
-                    "message": f"Task '{function_args.get('title', 'Untitled')}' added successfully",
+                    "task_id": task_id,
+                    "message": f"Task '{task_title}' added successfully",
                     "task": {
-                        "id": str(uuid4()),
-                        "title": function_args.get('title'),
+                        "id": task_id,
+                        "title": task_title,
                         "description": function_args.get('description'),
                         "due_date": function_args.get('due_date'),
                         "priority": function_args.get('priority', 'medium'),
                         "category": function_args.get('category'),
                         "completed": False,
-                        "created_at": "2026-02-05T12:00:00.000Z",
-                        "updated_at": "2026-02-05T12:00:00.000Z"
+                        "created_at": datetime.utcnow().isoformat(),
+                        "updated_at": datetime.utcnow().isoformat()
                     }
                 }
             elif function_name == "list_tasks":
-                # Create mock task list
-                mock_tasks = [
-                    {
+                # Simulate listing tasks
+                # Create sample tasks
+                tasks = []
+                for i in range(3):
+                    task = {
                         "id": str(uuid4()),
-                        "title": "Sample task 1",
-                        "description": "This is a sample task",
-                        "due_date": "2026-02-10T10:00:00.000Z",
-                        "priority": "medium",
-                        "category": "work",
-                        "completed": False,
-                        "created_at": "2026-02-01T10:00:00.000Z",
-                        "updated_at": "2026-02-01T10:00:00.000Z"
-                    },
-                    {
-                        "id": str(uuid4()),
-                        "title": "Sample task 2",
-                        "description": "Another sample task",
-                        "due_date": "2026-02-15T14:00:00.000Z",
-                        "priority": "high",
-                        "category": "personal",
-                        "completed": True,
-                        "created_at": "2026-02-02T10:00:00.000Z",
-                        "updated_at": "2026-02-03T10:00:00.000Z"
+                        "title": f"Sample task {i+1}",
+                        "description": f"Description for sample task {i+1}",
+                        "due_date": (datetime.utcnow().replace(day=i+1) if i+1 <= 28 else datetime.utcnow()).isoformat() if i < 3 else None,
+                        "priority": function_args.get('priority', 'medium'),
+                        "category": function_args.get('category', 'work'),
+                        "completed": i % 2 == 0,  # Alternate completion status
+                        "created_at": datetime.utcnow().isoformat(),
+                        "updated_at": datetime.utcnow().isoformat()
                     }
-                ]
+                    
+                    # Apply filters if provided
+                    status = function_args.get('status')
+                    if status == 'completed' and not task['completed']:
+                        continue
+                    elif status == 'pending' and task['completed']:
+                        continue
+                    
+                    priority = function_args.get('priority')
+                    if priority and task['priority'] != priority:
+                        continue
+                        
+                    category = function_args.get('category')
+                    if category and task['category'] != category:
+                        continue
+                    
+                    tasks.append(task)
 
-                # Apply filters if provided
-                status = function_args.get('status')
-                if status == 'completed':
-                    mock_tasks = [t for t in mock_tasks if t['completed']]
-                elif status == 'pending':
-                    mock_tasks = [t for t in mock_tasks if not t['completed']]
-
-                priority = function_args.get('priority')
-                if priority:
-                    mock_tasks = [t for t in mock_tasks if t['priority'] == priority]
-
-                category = function_args.get('category')
-                if category:
-                    mock_tasks = [t for t in mock_tasks if t['category'] == category]
-
-                limit = function_args.get('limit', 50)
-                mock_tasks = mock_tasks[:limit]
-
-                return {
+                result = {
                     "success": True,
-                    "total_count": len(mock_tasks),
-                    "returned_count": len(mock_tasks),
-                    "tasks": mock_tasks
+                    "total_count": len(tasks),
+                    "returned_count": len(tasks),
+                    "tasks": tasks
                 }
             elif function_name == "complete_task":
-                return {
+                # Simulate completing a task
+                task_id = function_args.get('task_id', str(uuid4()))
+                result = {
                     "success": True,
-                    "task_id": function_args.get('task_id'),
-                    "message": f"Task {function_args.get('task_id')} marked as completed"
+                    "task_id": task_id,
+                    "message": f"Task {task_id} marked as completed"
                 }
             elif function_name == "delete_task":
-                return {
+                # Simulate deleting a task
+                task_id = function_args.get('task_id', str(uuid4()))
+                result = {
                     "success": True,
-                    "task_id": function_args.get('task_id'),
-                    "message": f"Task {function_args.get('task_id')} deleted successfully"
+                    "task_id": task_id,
+                    "message": f"Task {task_id} deleted successfully"
                 }
             elif function_name == "update_task":
-                return {
+                # Simulate updating a task
+                task_id = function_args.get('task_id', str(uuid4()))
+                result = {
                     "success": True,
-                    "task_id": function_args.get('task_id'),
-                    "message": f"Task {function_args.get('task_id')} updated successfully"
+                    "task_id": task_id,
+                    "message": f"Task {task_id} updated successfully"
                 }
             else:
                 return {
                     "success": False,
                     "error": f"Unknown tool: {function_name}"
                 }
+
+            return result
+
         except Exception as e:
             return {
                 "success": False,

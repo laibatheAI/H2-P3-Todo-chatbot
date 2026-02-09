@@ -1,120 +1,110 @@
 """
-Simple chat API endpoint for the Todo AI Chatbot application.
-This is a minimal implementation to ensure the endpoint is registered correctly.
+Chat API endpoint for the Todo AI Chatbot application.
+This endpoint handles authenticated chat requests and integrates with the AI agent.
 """
-from fastapi import APIRouter, Path, HTTPException, status, Body
+from fastapi import APIRouter, Path, HTTPException, status, Body, Depends, Request
 from typing import Dict, Any
 import time
 import uuid
 from datetime import datetime
 
-# Handle imports with path manipulation
-import sys
-import os
-
-# Add the backend directory to the path temporarily
-backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if backend_dir not in sys.path:
-    sys.path.insert(0, backend_dir)
-
-try:
-    # Try to import the schemas
-    from schemas.chat import ChatRequest, ChatResponse, AssistantMessage, ResponseMetadata
-    SCHEMAS_AVAILABLE = True
-except ImportError:
-    # If schemas are not available, define basic structures
-    SCHEMAS_AVAILABLE = False
-    ChatRequest = None
-    ChatResponse = None
-    AssistantMessage = None
-    ResponseMetadata = None
-
-# Remove the path addition after imports
-if backend_dir in sys.path:
-    sys.path.remove(backend_dir)
+from backend.schemas.chat import ChatRequest, ChatResponse, AssistantMessage, ResponseMetadata
+from backend.middleware.auth import jwt_auth, get_current_user_id
+from backend.middleware.auth_validation import validate_authenticated_request
+from backend.core.agents.chat_agent import get_default_agent
+from backend.utils.conversation_loader import load_conversation_history, save_message_to_conversation
 
 
 router = APIRouter()
 
 
-if SCHEMAS_AVAILABLE:
-    @router.post("/api/{user_id}/chat", response_model=ChatResponse, tags=["chat"])
-    async def chat_endpoint(
-        user_id: str = Path(..., description="The unique identifier of the authenticated user"),
-        chat_request: ChatRequest = Body(...)
-    ) -> ChatResponse:
-        """
-        Chat endpoint that processes user messages and returns AI-generated responses.
-        Implements the stateless architecture by loading conversation history from the database
-        for each request and persisting messages to the database.
-        """
-        start_time = time.time()
+@router.post("/api/{user_id}/chat", response_model=ChatResponse, tags=["chat"])
+async def chat_endpoint(
+    request: Request,
+    user_id: str = Path(..., description="The unique identifier of the authenticated user"),
+    chat_request: ChatRequest = Body(...)
+) -> ChatResponse:
+    """
+    Chat endpoint that processes user messages and returns AI-generated responses.
+    Validates authentication and integrates with the AI agent for task management.
+    """
+    start_time = time.time()
 
-        # Generate a conversation ID for this interaction
-        conversation_id = str(uuid.uuid4())
-
-        # Calculate processing time
-        processing_time_ms = int((time.time() - start_time) * 1000)
-
-        # Create a response using the proper schema
-        assistant_message = AssistantMessage(
-            role="assistant",
-            content="Hello! This is a test response from the chatbot. Your message was received.",
-            tool_calls=[],
-            tool_results=[]
+    # Validate authentication
+    token_data = validate_authenticated_request(request)
+    
+    # Verify that the user_id in the path matches the authenticated user
+    if token_data.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: User ID mismatch"
         )
 
-        response = ChatResponse(
-            conversation_id=conversation_id,
-            response=assistant_message,
-            timestamp=datetime.utcnow(),
-            metadata=ResponseMetadata(processing_time_ms=processing_time_ms)
-        )
+    # Load conversation history (in a stateless manner, this would typically come from DB)
+    # For now, we'll use an empty history since we're implementing stateless architecture
+    conversation_history = []
 
-        return response
-else:
-    # Fallback endpoint without response model
-    @router.post("/api/{user_id}/chat", tags=["chat"])
-    async def chat_endpoint(
-        user_id: str = Path(..., description="The unique identifier of the authenticated user"),
-        chat_request: dict = Body(...)
-    ):
-        """
-        Simple chat endpoint that returns a basic response.
-        This is a minimal implementation to verify the endpoint is working.
-        """
-        start_time = time.time()
+    # Get the user's message from the request
+    user_message = chat_request.message.content
 
-        # Generate a conversation ID for this interaction
-        conversation_id = str(uuid.uuid4())
+    # Initialize the agent
+    agent = get_default_agent()
 
-        # Calculate processing time
-        processing_time_ms = int((time.time() - start_time) * 1000)
+    # Process the message with the agent
+    agent_response = await agent.process_message(
+        user_message=user_message,
+        conversation_history=conversation_history,
+        user_id=user_id
+    )
 
-        return {
-            "conversation_id": str(conversation_id),
-            "response": {
-                "role": "assistant",
-                "content": "Hello! This is a test response from the chatbot. Your message was received.",
-                "tool_calls": [],
-                "tool_results": []
-            },
-            "timestamp": datetime.utcnow().isoformat(),
-            "metadata": {"processing_time_ms": processing_time_ms}
-        }
+    # Generate a conversation ID for this interaction
+    conversation_id = str(uuid.uuid4())
+
+    # Calculate processing time
+    processing_time_ms = int((time.time() - start_time) * 1000)
+
+    # Create the assistant message response
+    assistant_message = AssistantMessage(
+        role=agent_response["role"],
+        content=agent_response["content"],
+        tool_calls=agent_response.get("tool_calls", []),
+        tool_results=agent_response.get("tool_results", [])
+    )
+
+    response = ChatResponse(
+        conversation_id=conversation_id,
+        response=assistant_message,
+        timestamp=datetime.utcnow(),
+        metadata=ResponseMetadata(processing_time_ms=processing_time_ms)
+    )
+
+    return response
 
 
 @router.get("/api/{user_id}/health", tags=["chat"])
 async def chat_health_check(
+    request: Request,
     user_id: str = Path(..., description="The unique identifier of the user (for path validation)")
 ):
     """
     Health check endpoint for the chat service.
     """
+    # Even for health check, we might want to validate the user is authenticated
+    # But for this endpoint, we'll just validate the token if present
+    auth_header = request.headers.get("Authorization")
+    auth_status = "no auth required"
+    
+    if auth_header:
+        try:
+            token_data = validate_authenticated_request(request)
+            auth_status = "authenticated"
+        except:
+            auth_status = "invalid token"
+    
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "version": "1.0.0",
         "service": "todo-chatbot-chat-api",
-        "schemas_available": SCHEMAS_AVAILABLE
+        "auth_status": auth_status
     }

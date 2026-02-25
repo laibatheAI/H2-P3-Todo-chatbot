@@ -1,12 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { Message } from '@/types/chat';
+import { createUserMessage, createAssistantMessage, createErrorMessage } from '@/utils/message-factory';
 
 const ChatInterface = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,11 +44,7 @@ const ChatInterface = () => {
     if (!inputValue.trim()) return;
 
     // Add user message to UI immediately
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputValue
-    };
+    const userMessage = createUserMessage(inputValue);
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
@@ -123,11 +115,9 @@ const ChatInterface = () => {
       console.log('Chat response data:', data);
 
       // Add real assistant response from backend
-      const assistantMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: data.response?.content || 'Received response from backend'
-      };
+      const assistantMessage = createAssistantMessage(
+        data.response?.content || 'Received response from backend'
+      );
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
@@ -137,11 +127,8 @@ const ChatInterface = () => {
           ? error.message
           : 'Failed to process your request';
 
-      const errorMessage = {
-        id: Date.now().toString(),
-        role: 'assistant' as const,  // Fix: Explicitly type as "assistant" literal
-        content: `Error: ${errorMessageText}. Please try again.`
-      };
+      // Use factory function for type-safe error message
+      const errorMessage = createErrorMessage(errorMessageText);
 
       setMessages(prev => [...prev, errorMessage]);
     } finally {

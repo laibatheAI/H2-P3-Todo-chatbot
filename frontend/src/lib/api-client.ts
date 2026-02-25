@@ -91,7 +91,7 @@ class ApiClient {
   }
 
   // Task endpoints
-  async getTasks(): Promise<AxiosResponse<Task[]>> {
+  async getTasks(): Promise<AxiosResponse<{ tasks: Task[]; total_count: number; page: number; page_size: number }>> {
     return this.client.get('/api/tasks');
   }
 

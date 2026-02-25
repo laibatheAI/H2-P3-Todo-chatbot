@@ -97,6 +97,8 @@ export default function TaskUpdateForm({ task, onTaskUpdated, onCancel }: TaskUp
       // Wait a bit before closing and calling onTaskUpdated
       setTimeout(() => {
         onTaskUpdated(response.data);
+        // Dispatch event to notify other components (e.g., Dashboard)
+        window.dispatchEvent(new CustomEvent('task-updated'));
         setShowUpdateConfirmation(false);
       }, 1500);
     } catch (error: any) {

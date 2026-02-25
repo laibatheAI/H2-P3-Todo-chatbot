@@ -5,9 +5,8 @@ from alembic import context
 from sqlmodel import SQLModel
 
 # Import all models for Alembic to detect them
-from backend.models.task import Task
-from backend.models.conversation import Conversation
-from backend.models.message import Message
+from backend.src.models.task import Task
+from backend.src.models.user import User
 
 # this is the Alembic Config object
 config = context.config

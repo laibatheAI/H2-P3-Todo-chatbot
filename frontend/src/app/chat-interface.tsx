@@ -66,8 +66,21 @@ const ChatInterface = () => {
       }
 
       // Decode the JWT token to get user info
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const userId = payload.sub || payload.userId || payload.user_id || 'unknown'; // Common JWT claim names
+      // The token payload should contain 'sub' which is the user_id
+      let userId: string;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        // Use 'sub' as primary (standard JWT claim), fallback to other common names
+        userId = payload.sub || payload.user_id || payload.userId;
+        
+        if (!userId) {
+          console.error('JWT payload missing user identifier:', payload);
+          throw new Error('User ID not found in token');
+        }
+      } catch (decodeError) {
+        console.error('Failed to decode JWT:', decodeError);
+        throw new Error('Invalid authentication token');
+      }
 
       // Make real HTTP request to backend API
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL;
@@ -75,11 +88,17 @@ const ChatInterface = () => {
         throw new Error('NEXT_PUBLIC_BACKEND_API_URL environment variable is not defined');
       }
 
-      const response = await fetch(`${backendUrl}/api/${userId}/chat`, {
+      console.log('Sending chat request:', {
+        url: `${backendUrl}/api/v1/${userId}/chat`,
+        userId,
+        message: inputValue
+      });
+
+      const response = await fetch(`${backendUrl}/api/v1/${userId}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // Include auth token if needed
+          'Authorization': `Bearer ${token}`, // Include auth token
         },
         body: JSON.stringify({
           message: {
@@ -92,21 +111,27 @@ const ChatInterface = () => {
         })
       });
 
+      console.log('Chat response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Backend error: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Backend error:', errorData);
+        throw new Error(`Backend error: ${response.status} - ${errorData.detail || response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('Chat response data:', data);
 
       // Add real assistant response from backend
       const assistantMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: data.response.content || 'Received response from backend'
+        content: data.response?.content || 'Received response from backend'
       };
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
+      console.error('Chat error:', error);
       const errorMessageText =
         error instanceof Error
           ? error.message

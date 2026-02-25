@@ -30,7 +30,7 @@ export default function TaskList({ userId }: TaskListProps) {
     try {
       setLoading(true);
       const response = await apiClient.getTasks();
-      setTasks(response.data);
+      setTasks(response.data.tasks || []);
     } catch (err: any) {
       // Don't handle 401 specially here since ProtectedRoute should handle auth status
       // Just show error message
@@ -45,6 +45,8 @@ export default function TaskList({ userId }: TaskListProps) {
     try {
       await apiClient.deleteTask(taskId);
       setTasks(tasks.filter(task => task.id !== taskId));
+      // Dispatch event to notify other components (e.g., Dashboard)
+      window.dispatchEvent(new CustomEvent('task-deleted'));
     } catch (err: any) {
       setError(err.message || 'Failed to delete task');
       throw err; // Re-throw so calling function can handle UI state
@@ -94,6 +96,8 @@ export default function TaskList({ userId }: TaskListProps) {
       setTasks(tasks.map(task =>
         task.id === taskId ? response.data : task
       ));
+      // Dispatch event to notify other components (e.g., Dashboard)
+      window.dispatchEvent(new CustomEvent('task-updated'));
     } catch (err: any) {
       setError(err.message || 'Failed to update task');
     }
@@ -134,7 +138,7 @@ export default function TaskList({ userId }: TaskListProps) {
       <div className="relative bg-gradient-to-br from-emerald-teal-50 to-emerald-teal-100 dark:from-slate-800/30 dark:to-slate-700/20 backdrop-blur-sm rounded-2xl border border-emerald-teal-200 dark:border-slate-600/50 shadow-xl shadow-emerald-teal-500/5 hover:shadow-emerald-teal-500/10 transition-all duration-300 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-teal-500/5 to-emerald-teal-500/5 rounded-2xl -z-10"></div>
         <ul className="divide-y divide-gray-200 dark:divide-gray-700/50">
-          {tasks.map((task) => (
+          {Array.isArray(tasks) && tasks.map((task) => (
             <TaskItem
               key={task.id}
               task={task}

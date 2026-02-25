@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Task, User } from '../../../../shared/types/api-contracts';
 import { apiClient } from '../../lib/api-client';
@@ -10,66 +10,75 @@ import TaskForm from '../../components/TaskForm/TaskForm';
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [stats, setStats] = useState({
-    total: 0,
-    completed: 0,
-    pending: 0,
-    completionRate: 0
-  });
-  const [recentTasks, setRecentTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Calculate stats dynamically from tasks array
+  const stats = {
+    total: tasks.length,
+    completed: tasks.filter((task) => task.completed).length,
+    pending: tasks.filter((task) => !task.completed).length,
+    completionRate: tasks.length > 0
+      ? Math.round((tasks.filter((task) => task.completed).length / tasks.length) * 100)
+      : 0
+  };
+
+  // Get recent 5 tasks (most recent first)
+  const recentTasks = [...tasks]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
+
+  const loadDashboardData = useCallback(async () => {
+    try {
+      const response = await apiClient.getTasks();
+      const tasksData = response.data.tasks || [];
+      setTasks(tasksData);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      if ((error as any).response?.status === 401) {
+        authUtils.logout();
+        router.push('/');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  // Listen for task mutation events from other components/pages
+  useEffect(() => {
+    const handleTaskMutation = () => {
+      loadDashboardData();
+    };
+
+    window.addEventListener('task-created', handleTaskMutation);
+    window.addEventListener('task-updated', handleTaskMutation);
+    window.addEventListener('task-deleted', handleTaskMutation);
+
+    return () => {
+      window.removeEventListener('task-created', handleTaskMutation);
+      window.removeEventListener('task-updated', handleTaskMutation);
+      window.removeEventListener('task-deleted', handleTaskMutation);
+    };
+  }, [loadDashboardData]);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Get user from local storage
         const userData = authUtils.getUser();
         if (userData) {
           setUser(userData);
         }
-
-        // Fetch tasks and calculate stats
-        const response = await apiClient.getTasks();
-        const tasks = response.data;
-
-        // Calculate stats
-        const total = tasks.length;
-        const completed = tasks.filter((task: Task) => task.completed).length;
-        const pending = total - completed;
-        const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-        setStats({
-          total,
-          completed,
-          pending,
-          completionRate
-        });
-
-        // Get recent 5 tasks (most recent first)
-        const sortedTasks = [...tasks].sort((a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        ).slice(0, 5);
-
-        setRecentTasks(sortedTasks);
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        // Redirect to login if unauthorized
-        if ((error as any).response?.status === 401) {
-          authUtils.logout();
-          router.push('/');
-        }
-      } finally {
-        setLoading(false);
+        console.error('Error fetching user data:', error);
       }
     };
 
     fetchUserData();
-  }, [router]);
+    loadDashboardData();
+  }, [loadDashboardData]);
 
-  const handleTaskCreated = (newTask: any) => {
-    // Refresh dashboard data after task creation
-    // Use router refresh instead of window.location.reload to avoid auth issues
-    router.refresh();
+  const handleTaskCreated = () => {
+    loadDashboardData();
   };
 
   const handleTaskClick = (taskId: string) => {

@@ -79,6 +79,8 @@ export default function TaskForm({ onTaskCreated, onCancel }: TaskFormProps) {
       // Wait a bit before closing and calling onTaskCreated
       setTimeout(() => {
         onTaskCreated(response.data);
+        // Dispatch event to notify other components (e.g., Dashboard)
+        window.dispatchEvent(new CustomEvent('task-created'));
         setFormData({ title: '', description: '' });
         setShowConfirmation(false);
       }, 1500);

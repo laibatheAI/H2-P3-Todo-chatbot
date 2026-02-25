@@ -1,0 +1,27 @@
+# Requirements for Todo AI Chatbot
+# Configured for Neon PostgreSQL
+
+# Web Framework
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+
+# Database (SQLModel + PostgreSQL)
+sqlmodel>=0.0.16
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
+
+# AI/LLM Integration
+openai>=1.3.5
+
+# Authentication & Security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.6
+
+# Configuration & Validation
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# HTTP Client
+httpx>=0.25.2

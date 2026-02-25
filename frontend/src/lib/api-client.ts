@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { API_BASE_URL } from './api-config';
 import {
   User,
   UserRegistrationRequest,
@@ -15,17 +16,15 @@ class ApiClient {
   private client: AxiosInstance;
   private token: string | null = null;
 
-  
-  // constructor() {
-  //   this.client = axios.create({
-  //     baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000',
-  //     timeout: 15000, // Increased timeout to 15 seconds
-  //   });
-
   constructor() {
+    // Use centralized API base URL from environment variable
+    // No hardcoded localhost - uses NEXT_PUBLIC_BACKEND_API_URL
     this.client = axios.create({
-      baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000',
-      timeout: 15000, // Increased timeout to 15 seconds
+      baseURL: API_BASE_URL,
+      timeout: 30000, // 30 seconds timeout for production
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     // Initialize token from localStorage if available

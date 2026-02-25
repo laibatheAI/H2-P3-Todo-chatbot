@@ -74,23 +74,21 @@ const ChatInterface = () => {
         throw new Error('Invalid authentication token');
       }
 
-      // Make real HTTP request to backend API
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL;
-      if (!backendUrl) {
-        throw new Error('NEXT_PUBLIC_BACKEND_API_URL environment variable is not defined');
-      }
+      // Use centralized API configuration (no hardcoded URLs)
+      const { buildChatUrl } = await import('@/lib/api-config');
+      const chatUrl = buildChatUrl(userId);
 
       console.log('Sending chat request:', {
-        url: `${backendUrl}/api/v1/${userId}/chat`,
+        url: chatUrl,
         userId,
         message: inputValue
       });
 
-      const response = await fetch(`${backendUrl}/api/v1/${userId}/chat`, {
+      const response = await fetch(chatUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // Include auth token
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           message: {

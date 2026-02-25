@@ -139,7 +139,7 @@ const ChatInterface = () => {
 
       const errorMessage = {
         id: Date.now().toString(),
-        role: 'assistant',
+        role: 'assistant' as const,  // Fix: Explicitly type as "assistant" literal
         content: `Error: ${errorMessageText}. Please try again.`
       };
 
